@@ -1,29 +1,31 @@
 export interface ProductDetails {
-
-    id: string;
+    id?: string;
 
     title: string;
 
     brand: string;
 
+    description: string[];
+
     price: number;
 
-    description: string;
+    image?: string;
 
-    images: string[];
+    images?: string[];
 
     rating: number;
 
-    reviews: number;
+    ratingCount?: number;
 
     sizes: string[];
 
     colors: string[];
 
-    seller?: string;
+    specifications: any;
 
-    platform: string;
+    availability: boolean;
 
-    url: string;
+    platform?: string;
 
+    url?: string;
 }

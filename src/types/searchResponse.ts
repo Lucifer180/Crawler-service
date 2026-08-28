@@ -1,7 +1,7 @@
-import { Product } from "./Product";
+import { ProductGroup } from "./ProductGroup";
 
 export interface SearchResult {
-    query: string,
-    platform: string,
-    products: Product[]
-}
+    query: string;
+    total: number;
+    groups: ProductGroup[];
+}

@@ -4,6 +4,7 @@ import { ProductDetails } from "../../types/ProductDetails";
 
 import { FlipkartFetcher } from "./flipkartFetcher";
 import { FlipKartParser } from "./flipkartParser";
+import {FlipkartDetailsParser} from "./FlipkartDetailsParser"
 
 
 export class FlipkartCrawler implements BaseCrawler {
@@ -17,7 +18,7 @@ export class FlipkartCrawler implements BaseCrawler {
 
         const { page, context } = await  this.fetcher.search(query);
 
-        const products = await this.parser.parse(page);
+        const products = await FlipKartParser.parse(page);
 
         await context.close();
 
@@ -25,6 +26,12 @@ export class FlipkartCrawler implements BaseCrawler {
     };
 
     async getProduct(url: string): Promise<ProductDetails> {
-        throw new Error("Not implemented");
+         const { page, context } = await this.fetcher.getProduct(url);
+        
+                const details = await FlipkartDetailsParser.parse(page)
+        
+                await context.close();
+        
+                return details;
     }
 }

@@ -7,6 +7,7 @@ export interface FetchResult {
 };
 
 export abstract class BaseFetcher {
+    
     protected async navigate(url: string): Promise<FetchResult> {
         const context = await BrowserManager.createContext();
 
@@ -23,5 +24,7 @@ export abstract class BaseFetcher {
 
     protected async dispose(context: BrowserContext) {
         await context.close();
-    }
+    };
+
+
 }

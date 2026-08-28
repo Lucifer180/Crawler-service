@@ -3,6 +3,7 @@ import { Product } from "../../types/Product";
 import { ProductDetails } from "../../types/ProductDetails"
 import { MyntraFetcher } from "./MyntraFetcher";
 import { MyntraParser } from "./MyntraParser";
+import { MyntraDetailsParser } from "./MyntraDetailsParser";
 
 export class MyntraCrawler implements BaseCrawler {
     readonly platform = "myntra";
@@ -22,6 +23,13 @@ export class MyntraCrawler implements BaseCrawler {
     }
 
     async getProduct(url: string): Promise<ProductDetails> {
-        throw new Error("not implemented");
+        const { page, context } = await this.fetcher.getProduct(url);
+
+        const details = await MyntraDetailsParser.parse(page);
+
+        await context.close();
+
+        return details;
+
     }
 }

@@ -35,24 +35,24 @@ class BrowserManager {
         const context = await this.browser.newContext();
         const page = await context.newPage();
 
-        await context.route("**/*", (route) => {
+        // await context.route("**/*", (route) => {
 
-            const type =
-                route.request().resourceType();
+        //     const type =
+        //         route.request().resourceType();
 
-            if (
-                type === "image" ||
-                type === "font" ||
-                type === "media"
-            ) {
+        //     if (
+        //         type === "image" ||
+        //         type === "font" ||
+        //         type === "media"
+        //     ) {
 
-                return route.abort();
+        //         return route.abort();
 
-            }
+        //     }
 
-            route.continue();
+        //     route.continue();
 
-        });
+        // });
         // Spoof navigator.webdriver to avoid bot detection
         await page.addInitScript(() => {
             Object.defineProperty(navigator, "webdriver", { get: () => undefined });
