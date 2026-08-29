@@ -6,8 +6,8 @@ class CrawlerRegistry {
     private crawlers: BaseCrawler[] = [];
 
     constructor() {
-        // this.register(new MyntraCrawler());
-        // this.register(new AmazonCrawler());
+        this.register(new MyntraCrawler());
+        this.register(new AmazonCrawler());
        this.register(new FlipkartCrawler());
 
     }

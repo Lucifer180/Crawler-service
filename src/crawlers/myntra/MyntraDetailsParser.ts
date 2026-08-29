@@ -5,10 +5,10 @@ import { MyntraDetailsSelectors } from "./MyntraDetailsSelector";
 
 export class MyntraDetailsParser {
     static async parse(page: Page): Promise<ProductDetails> {
-        await page.screenshot({
-            path: 'myntra-debug.png',
-            fullPage: true
-        });
+        // await page.screenshot({
+        //     path: 'myntra-debug.png',
+        //     fullPage: true
+        // });
 
         const title =
             await page.locator(MyntraDetailsSelectors.SUBTITLE).textContent().catch(() => "") ?? "";
