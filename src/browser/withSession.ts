@@ -11,7 +11,8 @@ export async function withSession<T>(open: OpenSession, use: (page: Page)=>Promi
 
         try {
             const session = await open();
-            return await use(session.page)
+            context = session.context;
+            return await use(session.page);
         } finally {
             if (context) {
                 await context.close().catch(err => logger.warn({ err }, "context close failed"));
