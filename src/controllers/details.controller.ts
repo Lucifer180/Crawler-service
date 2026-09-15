@@ -1,23 +1,23 @@
 import { Request, Response } from "express";
 import { getProductDetails } from "../services/ProductdetailsService";
 import productCache from "../cache/productCache";
+import { assertAllowedUrl, detailsBodySchema, parseOrThrow } from "../validators/schemas";
 
 export async function getProduct(req: Request, res: Response) {
-    const { platform, url } = req.body;
+    const { platform, url } = parseOrThrow(detailsBodySchema, req.body);
+    
+    const safeUrl = assertAllowedUrl(platform, url);
 
-    const cached = productCache.get(url);
-
+    const cached = productCache.get(safeUrl);
     if (cached) {
-        console.log("[CACHE HIT]", url);
+        req.log.info({ url: safeUrl }, "cache hit");
         return res.json(cached);
     }
 
-    console.log("[CACHE MISS]", url);
+    req.log.info({ url: safeUrl }, "cache miss");
+    const details = await getProductDetails(platform, safeUrl, { log: req.log });
 
-    const product = await getProductDetails(platform, url);
+    productCache.set(safeUrl, details);
 
-    // Save in cache
-    productCache.set(url, product);
-
-    return res.json(product);
+    return res.json(details);
 }

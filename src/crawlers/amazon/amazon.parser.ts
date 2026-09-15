@@ -2,6 +2,7 @@ import { Page } from "playwright";
 import { Product } from "../../types/Product";
 import { AmazonSelectors } from "./amazon.constans";
 import { normalizePrice } from "../../normalizers/product.normalizer";
+import { logger } from "../../utils/logger";
 
 const MAX_PRODUCTS = 20;
 
@@ -45,7 +46,7 @@ export class AmazonParser {
                 LINK: AmazonSelectors.LINK,
             });
 
-        console.log(`Found ${products.length} products on Amazon`);
+        logger.info({ platform: "amazon", count: products.length }, "products found");
 
         return products
             .map(({ title, priceText, image, link }) => {

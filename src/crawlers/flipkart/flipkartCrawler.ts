@@ -1,10 +1,10 @@
 import { BaseCrawler } from "../BaseCrawler";;
 import { Product } from "../../types/Product";
 import { ProductDetails } from "../../types/ProductDetails";
-
+import { withSession } from "../../browser/withSession";
 import { FlipkartFetcher } from "./flipkartFetcher";
 import { FlipKartParser } from "./flipkartParser";
-import {FlipkartDetailsParser} from "./FlipkartDetailsParser"
+import { FlipkartDetailsParser } from "./FlipkartDetailsParser"
 
 
 export class FlipkartCrawler implements BaseCrawler {
@@ -15,23 +15,13 @@ export class FlipkartCrawler implements BaseCrawler {
     private parser = new FlipKartParser();
 
     async search(query: string): Promise<Product[]> {
-
-        const { page, context } = await  this.fetcher.search(query);
-
-        const products = await FlipKartParser.parse(page);
-
-        await context.close();
-
-        return products;
+        return withSession(() => this.fetcher.search(query), page => FlipKartParser.parse(page))
     };
 
     async getProduct(url: string): Promise<ProductDetails> {
-         const { page, context } = await this.fetcher.getProduct(url);
-        
-                const details = await FlipkartDetailsParser.parse(page)
-        
-                await context.close();
-        
-                return details;
+        return withSession(
+            () => this.fetcher.getProduct(url),
+            page => FlipkartDetailsParser.parse(page)
+        );
     }
 }

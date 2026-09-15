@@ -2,6 +2,7 @@ import { Locator, Page } from "playwright";
 import { Product } from "../../types/Product";
 import { MyntraSelectors } from "./MyntraSelectors";
 import { normalizePrice } from "../../normalizers/product.normalizer";
+import { logger } from "../../utils/logger";
 
 const MAX_PRODUCTS = 15;
 
@@ -52,7 +53,7 @@ export class MyntraParser {
             LINK: MyntraSelectors.LINK,
         });
 
-    console.log(`Found ${products.length} products on Myntra`);
+    logger.info({ platform: "myntra", count: products.length }, "products found");
 
     return products
         .map(({ title, brand, priceText, image, link }) => {

@@ -1,30 +1,41 @@
 import { Browser, chromium, Page } from "playwright";
 import dotenv from "dotenv";
 import { CrawlerSession } from "../types/CrawlerSession"
-
+import { logger } from "../utils/logger";
+import { config } from "../config";
 dotenv.config();
 
 class BrowserManager {
     private browser: Browser | null = null;
 
-    async init() {
-        if (this.browser) {
-            return;
-        };
+    async initialize():Promise<void> {
+        if (this.browser) return;
 
         this.browser = await chromium.launch({
-            headless: process.env.HEADLESS === "true",
+            headless: config.HEADLESS,
             args: [
-                "--disable-blink-features=AutomationControlled",
+                // Chromium's sandbox needs kernel privileges most containers do
+                // not grant. Without this it refuses to start under Docker.
                 "--no-sandbox",
                 "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-infobars",
-                "--window-size=1920,1080",
-            ],
-        });
 
-        console.log("chromium started");
+                // Docker gives /dev/shm 64 MB. Chromium uses it for shared memory
+                // between its processes and crashes tabs when it runs out. This is
+                // the single most common "works locally, dies in the container",
+                // and the symptom looks like a random tab crash, not a config bug.
+                "--disable-dev-shm-usage",
+
+                "--disable-blink-features=AutomationControlled",
+                "--disable-infobars"
+            ]
+        })
+        this.browser.on("disconnected", () => {
+            {
+                logger.error("chromium disconnected");
+                this.browser = null;
+            }
+        });
+        logger.info("chromium started");
     };
 
     async createSession(): Promise<CrawlerSession> {
@@ -35,25 +46,6 @@ class BrowserManager {
         const context = await this.browser.newContext();
         const page = await context.newPage();
 
-        // await context.route("**/*", (route) => {
-
-        //     const type =
-        //         route.request().resourceType();
-
-        //     if (
-        //         type === "image" ||
-        //         type === "font" ||
-        //         type === "media"
-        //     ) {
-
-        //         return route.abort();
-
-        //     }
-
-        //     route.continue();
-
-        // });
-        // Spoof navigator.webdriver to avoid bot detection
         await page.addInitScript(() => {
             Object.defineProperty(navigator, "webdriver", { get: () => undefined });
         });
@@ -67,10 +59,10 @@ class BrowserManager {
         return {
             context,
             page,
-            dispose: async () => {
-                await page.close();
-                await context.close();
-            }
+            // dispose: async () => {
+            //     await page.close();
+            //     await context.close();
+            // }
         };
     };
 
@@ -99,6 +91,9 @@ class BrowserManager {
         return this.browser !== null
     };
 
+    isHealthy(): boolean {
+        return this.browser !== null && this.browser.isConnected();
+    }
 
 };
 

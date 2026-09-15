@@ -4,71 +4,79 @@ import { MergeService } from "../services/MergeService";
 import { Product } from "../types/Product";
 import { ProductGroupingService } from "../services/ProductGroupingService";
 import { SortService } from "../services/sortService";
-import { SearchResult } from "../types/searchResponse";
+import { SearchResult, SourceReport } from "../types/searchResponse";
+import { CrawlQueue } from "../queue/CrawleQueue";
+import { logger, Logger } from "../utils/logger";
+import { withRetry } from "../utils/retry";
 
 const MAX_PRODUCTS = 50;
+const log = logger.child({ component: "search-orchestrator" });
 
-export async function searchProducts(query: string): Promise<SearchResult> {
+export interface SearchOptions {
+    limit?: number;
+    log?: Logger;
+}
+
+export async function searchProducts(query: string, options?: SearchOptions): Promise<SearchResult> {
+    const log = options?.log ?? logger;
+    const limit = options?.limit ?? 20;
+
     const crawlers = registry.getAll();
 
-    console.log(`[Orchestrator] Starting search for "${query}" with ${crawlers.length} crawlers.`);
+    const settled = await Promise.all(
+        crawlers.map(async (crawler): Promise<{
+            report: SourceReport;
+            products: Product[];
+        }> => {
+            const startedAt = Date.now();
 
-    const results = await Promise.allSettled(
-        crawlers.map(async (crawler) => {
             try {
-                const products = await crawler.search(query);
-                console.log(`[Orchestrator] Crawler "${crawler.platform}" succeeded. Found ${products.length} products.`);
-                return products;
-            } catch (err: any) {
-                console.error(`[Orchestrator] Crawler "${crawler.platform}" failed:`, err.message || err);
-                throw err;
+                const products = await withRetry(
+                    () => crawler.search(query),
+                    {
+                        label: `${crawler.platform}:search`, attempts: 2
+                    }
+                );
+
+                return {
+                    products,
+                    report: {
+                        platform: crawler.platform,
+                        status: "ok",
+                        count: products.length,
+                        durationMs: Date.now() - startedAt
+                    }
+                }
+            } catch (error) {
+                log.warn(
+                    { platform: crawler.platform, err: error },
+                    "crawler failed"
+                );
+                return {
+                    products: [],
+                    report: {
+                        platform: crawler.platform,
+                        status: "failed",
+                        count: 0,
+                        durationMs: Date.now() - startedAt,
+                        error:
+                            error instanceof Error ? error.message : String(error)
+                    }
+                };
             }
-        })
-    );
 
-    const successfulResponses = results
-        .filter((result): result is PromiseFulfilledResult<Product[]> => result.status === 'fulfilled')
-        .map(result => result.value);
+        }));
 
-    console.log(`[Orchestrator] Successful responses count: ${successfulResponses.length}`);
-    successfulResponses.forEach((list, idx) => {
-        const platform = list[0]?.platform || `unknown-${idx}`;
-        console.log(`  - Platform "${platform}": ${list.length} products`);
-    });
-
-    // 1. Merge products from all crawlers
-    const merged = MergeService.merge(successfulResponses);
-    console.log(`[Orchestrator] Merged count: ${merged.length}`);
-
-    // 2. Remove invalid products (Filter out products with price <= 0 or empty titles)
+    const sources = settled.map(s => s.report);
+    const merged = MergeService.merge(settled.map(s => s.products));
     const processed = ProductProcessor.process(merged);
-    console.log(`[Orchestrator] Processed count (after ProductProcessor): ${processed.length}`);
-
-    // 3. Sort all products by price
     const sorted = SortService.byPrice(processed);
-
-    // 4. Group by normalized title
-    const grouped = ProductGroupingService.group(sorted);
-    console.log(`[Orchestrator] Grouped count (after ProductGroupingService): ${grouped.length}`);
-    
-    console.table(
-        grouped.map(g => ({
-            id: g.id,
-            title: g.title,
-            brand: g.brand,
-            offersCount: g.offers.length,
-            cheapestPrice: g.offers[0]?.price
-        }))
-    );
-
-    // 5. Return only the first MAX_PRODUCTS groups
-    const groups = grouped.slice(0, MAX_PRODUCTS);
-    console.log(`[Orchestrator] Returning top ${groups.length} groups.`);
+    const grouped = ProductGroupingService.group(sorted);;
 
     return {
         query,
-        total: groups.length,
-        groups
-    };
+        total: grouped.length,
+        sources,
+        groups: grouped.slice(0, limit)
+    }
 }
-

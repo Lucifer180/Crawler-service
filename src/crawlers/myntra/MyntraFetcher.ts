@@ -1,6 +1,7 @@
 import { BaseFetcher } from "../base/BaseFetcher";
 import BrowserManager from "../../browser/browserManager";
 import { Page, BrowserContext } from "playwright";
+import { logger } from "../../utils/logger";
 export class MyntraFetcher extends BaseFetcher {
     async search(query: string) {
         const url = `https://www.myntra.com/${encodeURIComponent(query)}`;
@@ -16,7 +17,7 @@ export class MyntraFetcher extends BaseFetcher {
             ? url
             : `https://www.myntra.com/${url}`;
 
-        console.log("fullUrl", fullUrl);
+        logger.debug({ url: fullUrl }, "opening Myntra product page");
         await page.goto(fullUrl, {
             waitUntil: "domcontentloaded",
             timeout: 60000

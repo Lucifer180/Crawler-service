@@ -2,6 +2,7 @@ import { Page } from "playwright";
 import { Product } from "../../types/Product";
 import { FlipkartSelectors } from "./flipkartSelectors";
 import { normalizePrice } from "../../normalizers/product.normalizer";
+import { logger } from "../../utils/logger";
 
 export class FlipKartParser {
     static async parse(page: Page): Promise<Product[]> {
@@ -9,7 +10,7 @@ export class FlipKartParser {
 
                     const count = await cards.count();
 
-                    console.log("Cards Found:", count);
+                    logger.info({ platform: "flipkart", count }, "product cards found");
 
                     if (count === 0) {
                         throw new Error("No product cards found");
@@ -75,7 +76,6 @@ export class FlipKartParser {
 // import { Product } from "../../types/Product";
 // import { FlipkartSelectors } from "./flipkartSelectors";
 // import { normalizePrice } from "../../normalizers/product.normalizer";
-
 // const MAX_PRODUCTS = 20;
 
 // export class FlipKartParser {
