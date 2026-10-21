@@ -3,6 +3,7 @@ import { Product } from "../../types/Product";
 import { MyntraSelectors } from "./MyntraSelectors";
 import { normalizePrice } from "../../normalizers/product.normalizer";
 import { logger } from "../../utils/logger";
+import { absoluteUrl } from "../../utils/parser.utils";
 
 const MAX_PRODUCTS = 15;
 
@@ -58,22 +59,24 @@ export class MyntraParser {
     return products
         .map(({ title, brand, priceText, image, link }) => {
             const price = normalizePrice(priceText);
+            // Myntra hrefs are relative ("sports-shoes/puma/.../32588864/buy").
+            const url = absoluteUrl(link, "https://www.myntra.com");
 
-            const id = link
-                ? link.split("/").pop()?.split("?")[0] ?? crypto.randomUUID()
-                : crypto.randomUUID();
-
-            if (!title || !price) {
+            if (!title || !price || !url) {
                 return null;
             }
+
+            // The numeric style id sits just before the trailing "/buy".
+            const id = new URL(url).pathname.split("/").filter(Boolean).find(part => /^\d+$/.test(part))
+                ?? crypto.randomUUID();
 
             return {
                 id,
                 title: `${brand} ${title}`.trim(),
                 brand: brand.trim(),
                 price,
-                image,
-                url: link,
+                image: image || undefined,
+                url,
                 platform: "myntra",
             };
         })

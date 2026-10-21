@@ -2,9 +2,16 @@ import { BaseFetcher } from "../base/BaseFetcher";
 import BrowserManager from "../../browser/browserManager";
 import { Page, BrowserContext } from "playwright";
 import { logger } from "../../utils/logger";
+import { toSlug } from "../../utils/parser.utils";
 export class MyntraFetcher extends BaseFetcher {
     async search(query: string) {
-        const url = `https://www.myntra.com/${encodeURIComponent(query)}`;
+        // Myntra listing pages are slug paths (/running-shoes); "%20" in the
+        // path is not a page it serves.
+        const slug = toSlug(query);
+        // An all-symbol query slugs to "" and would load the homepage instead.
+        if (!slug) throw new Error("Query has no searchable words for Myntra");
+
+        const url = `https://www.myntra.com/${slug}`;
 
         return await this.navigate(url);
 

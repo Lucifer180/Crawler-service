@@ -1,6 +1,6 @@
 import { Page } from "playwright";
 import { Product } from "../../types/Product";
-import { AmazonSelectors } from "./amazon.constans";
+import { AmazonConstants, AmazonSelectors } from "./amazon.constans";
 import { normalizePrice } from "../../normalizers/product.normalizer";
 import { logger } from "../../utils/logger";
 
@@ -8,74 +8,65 @@ const MAX_PRODUCTS = 20;
 
 export class AmazonParser {
     async parse(page: Page): Promise<Product[]> {
+        await page
+            .waitForSelector(AmazonSelectors.PRODUCT_CARD, { timeout: 15000 })
+            .catch(() => null);
+
         const products = await page
             .locator(AmazonSelectors.PRODUCT_CARD)
-            .evaluateAll((cards, selectors) => {
-                return cards.slice(0, 20).map((card) => {
-                    const getText = (selector: string): string => {
-                        return (
-                            card
-                                .querySelector(selector)
-                                ?.textContent
-                                ?.trim() ?? ""
-                        );
-                    };
-
-                    const getAttribute = (
-                        selector: string,
-                        attribute: string
-                    ): string | null => {
-                        return (
-                            card
-                                .querySelector(selector)
-                                ?.getAttribute(attribute) ?? null
-                        );
-                    };
+            .evaluateAll((cards, { selectors, max }) => {
+                return cards.slice(0, max).map((card) => {
+                    const headings = [...card.querySelectorAll(selectors.HEADINGS)]
+                        .map(h => h.textContent?.trim() ?? "")
+                        .filter(Boolean);
 
                     return {
-                        title: getText(selectors.TITLE),
-                        priceText: getText(selectors.PRICE),
-                        image: getAttribute(selectors.IMAGE, "src"),
-                        link: getAttribute(selectors.LINK, "href"),
+                        asin: card.getAttribute("data-asin") ?? "",
+                        brand: headings.length > 1 ? headings[0] : "",
+                        title: headings[headings.length - 1] ?? "",
+                        priceText: card.querySelector(selectors.PRICE)?.textContent?.trim() ?? "",
+                        image: card.querySelector(selectors.IMAGE)?.getAttribute("src") ?? "",
                     };
                 });
             }, {
-                TITLE: AmazonSelectors.TITLE,
-                PRICE: AmazonSelectors.PRICE,
-                IMAGE: AmazonSelectors.IMAGE,
-                LINK: AmazonSelectors.LINK,
+                selectors: {
+                    HEADINGS: AmazonSelectors.HEADINGS,
+                    PRICE: AmazonSelectors.PRICE,
+                    IMAGE: AmazonSelectors.IMAGE,
+                },
+                max: MAX_PRODUCTS,
             });
 
         logger.info({ platform: "amazon", count: products.length }, "products found");
 
+        if (products.length === 0) {
+            // Either a genuine empty result or a bot wall; both look the same here.
+            const blocked = await page.locator('form[action*="validateCaptcha"]').count();
+            if (blocked > 0) throw new Error("Amazon served a captcha");
+        }
+
         return products
-            .map(({ title, priceText, image, link }) => {
+            .map(({ asin, brand, title, priceText, image }) => {
                 const price = normalizePrice(priceText);
 
-                if (!title || !price) {
+                if (!asin || !title || !price) {
                     return null;
                 }
 
-                const id = link
-                    ? link.split("/dp/")[1]?.split("/")[0] ??
-                      link.split("/").pop()?.split("?")[0] ??
-                      crypto.randomUUID()
-                    : crypto.randomUUID();
+                const fullTitle = brand && !title.toLowerCase().startsWith(brand.toLowerCase())
+                    ? `${brand} ${title}`
+                    : title;
 
                 return {
-                    id,
-                    title,
-                    brand: "",
+                    id: asin,
+                    title: fullTitle,
+                    brand,
                     price,
-                    image,
-                    url: link
-                        ? link.startsWith("http")
-                            ? link
-                            : `https://www.amazon.in${link}`
-                        : null,
+                    image: image || undefined,
+                    url: AmazonConstants.PRODUCT_URL(asin),
                     platform: "amazon",
                 };
             })
-             .filter(p => p !== null) as Product[];
+            .filter(p => p !== null) as Product[];
     }
 }

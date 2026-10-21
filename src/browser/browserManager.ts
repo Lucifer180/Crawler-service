@@ -13,6 +13,11 @@ class BrowserManager {
 
         this.browser = await chromium.launch({
             headless: config.HEADLESS,
+            // The "chromium" channel runs Chrome's new headless mode instead of
+            // the stripped-down headless shell. Myntra's bot protection resets
+            // the connection (ERR_HTTP2_PROTOCOL_ERROR) for the shell, whatever
+            // the URL; the full browser gets through.
+            channel: "chromium",
             args: [
                 // Chromium's sandbox needs kernel privileges most containers do
                 // not grant. Without this it refuses to start under Docker.

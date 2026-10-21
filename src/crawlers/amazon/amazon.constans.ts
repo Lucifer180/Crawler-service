@@ -1,22 +1,24 @@
-
-
+// Amazon.in search result selectors. These were previously a copy of the
+// Flipkart ones (and the URL pointed at flipkart.com), which is why "amazon"
+// always returned 0. Checked against live search pages 2026-10-21.
 export const AmazonSelectors = {
-       SEARCH_BOX: 'input[name="q"]',
+    PRODUCT_CARD: '[data-component-type="s-search-result"][data-asin]:not([data-asin=""])',
 
-    PRODUCT_CARD: 'div[data-id]',
+    // Fashion cards have two h2s (brand, then title); others have one (title).
+    HEADINGS: "h2",
 
-    TITLE: 'a.wjcEIp',
+    // .a-text-price is the struck-through MRP; skip it.
+    PRICE: ".a-price:not(.a-text-price) .a-offscreen",
 
-    PRICE: 'div.Nx9bqj',
-
-    IMAGE: 'img',
-
-    LINK: 'a[href*="/p/"]',
+    IMAGE: "img.s-image",
 };
 
 export const AmazonConstants = {
-    BASE_URL: "https://www.flipkart.com",
-    SEARCH_URL: "https://www.flipkart.com/search?q=",
+    BASE_URL: "https://www.amazon.in",
+    SEARCH_URL: "https://www.amazon.in/s?k=",
+    // Sponsored results link through /sspa/click tracking redirects; the
+    // canonical product page is always /dp/<ASIN>.
+    PRODUCT_URL: (asin: string) => `https://www.amazon.in/dp/${asin}`,
 
     TIMEOUT: 50000
 }
