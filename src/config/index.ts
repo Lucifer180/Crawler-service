@@ -47,7 +47,8 @@ export const config = {
     HEADLESS: raw.HEADLESS === "true",
     BLOCK_HEAVY_RESOURCES: raw.BLOCK_HEAVY_RESOURCES === "true",
     API_KEYS: csv(raw.API_KEYS),
-    CORS_ORIGINS: raw.CORS_ORIGINS === "*" ? "*" : csv(raw.CORS_ORIGINS),
+    CORS_ORIGINS: "*" ,
+    //  raw.CORS_ORIGINS === "*" ? "*" : csv(raw.CORS_ORIGINS),
     isProduction: raw.NODE_ENV === "production",
     isTest: raw.NODE_ENV === "test"
 };
