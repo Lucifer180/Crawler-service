@@ -36,7 +36,7 @@ export function assertAllowedUrl(platform: string, raw: string): string {
     const ok = allowed.some(domain => host == domain || host.endsWith(`.${domain}`));
 
     if (!ok) {
-        throw new BadRequestError(`Host "${host}" is not valid ${platform}`);
+        throw new BadRequestError(`Host "${host}" is not a valid ${platform} URL`);
     };
 
     parsed.username = "";

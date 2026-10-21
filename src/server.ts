@@ -1,7 +1,8 @@
+// Must load first: config/index.ts parses process.env at import time.
+import "dotenv/config";
 import app from "./app";
 import BrowserManager from "./browser/browserManager";
 import { logger } from "./utils/logger";
-import "dotenv/config";
 
 const PORT = process.env.PORT || 5000;
 

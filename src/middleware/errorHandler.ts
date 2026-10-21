@@ -22,7 +22,7 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
         log[level]({ err, code: err.code }, err.message);
 
         return res.status(err.statusCode).json({
-            err: {
+            error: {
                 code: err.code,
                 message: err.message,
                 details: err.details,
