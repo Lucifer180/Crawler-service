@@ -1,0 +1,63 @@
+name: Test and deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  PROJECT_ID: crawler-service-prod
+  REGION: asia-south1
+  SERVICE: crawler-service
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run typecheck
+      - run: npm test
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write        # required for Workload Identity Federation
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - run: gcloud auth configure-docker $REGION-docker.pkg.dev --quiet
+
+      - name: Build and push
+        run: |
+          IMAGE="$REGION-docker.pkg.dev/$PROJECT_ID/crawler/$SERVICE:${{ github.sha }}"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
+      - name: Deploy
+        run: |
+          gcloud run deploy $SERVICE \
+            --image="$IMAGE" \
+            --region=$REGION \
+            --service-account="crawler-runtime@$PROJECT_ID.iam.gserviceaccount.com" \
+            --allow-unauthenticated \
+            --memory=2Gi --cpu=2 --concurrency=4 \
+            --min-instances=1 --max-instances=5 --timeout=300 \
+            --set-env-vars="NODE_ENV=production,HEADLESS=true,LOG_LEVEL=info" \
+            --set-secrets="API_KEYS=crawler-api-keys:latest"
