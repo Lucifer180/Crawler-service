@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { searchController } from "../controllers/search.controller";
 import { getProduct } from "../controllers/details.controller";
-
+import { requireApiKey } from "../middleware/apiKey";
 const router = Router();
+
+router.use(requireApiKey)
 
 router.get("/search", searchController);
 

@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+.gitignore
+.env
+.env.*
+*.log
+tests
+fixtures
+scripts
+*-debug.html
+*-debug.png
+*-page.html
+README.md
+.github
